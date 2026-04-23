@@ -99,54 +99,64 @@ def construir_grafo(data):
 
     return g
 
-def Es_Bipartito(g):
-    #crear el dict de color y la lista de componentes 
-    #dict por que son re goated y puedes darles identificaciones
-    color = {}
-    componentes = []  # cada entrada: (tamaño, es_bipartito)
-
+#toco separarlo por que esto se usa en el punto 3
+def encontrar_componentes(g):
+    visitados = {}
+    componentes = []
+    #como lo de queue que hizo el profe
     for inicio in g.adyacencia:
-        if inicio in color: 
+        if inicio in visitados:
             continue
-
-        #si no esta en la lista entonces se le asigna 
-        #como que [] es para listas y acceder a un dict 
-        color[inicio] = 0 
-        #se crea el queue para poder revisar los vecinos de ese primer dato
-        #tambien se crea el tamaño para la lista de componentes 
-        cola = [inicio] 
-        tamaño = 0
-        bipartita = True
-        #casi que igual a la que hizo el profe pero con las condiciones necesarias
+        #si esta en visitados entonces se ignora y continua al while por que son no dirigidos 
+        #se crea una lista de componente que es una lista de los nodos del componente, la cola y se le añade ese nodo a visitados
+        componente = []
+        cola = [inicio]
+        visitados[inicio] = True
         while cola:
-            #actual es la primera que sale del queue y a ese se le revisan sus vecinos
+            #se revisa el primero que sale de la cola y se añade a la lista de ese componente
             actual = cola.pop(0)
-            tamaño += 1
-            #en un dict como tienes varios datos asignados a una sola clave entonces puedes acceder independientemente a ellos
-            #se le asigna posteriormente una variable a la posicion del dato de la tupla que quieres revisar o supuestamente puedes hacer esto donde _ es ignorar el valor
-            ##si el vecino no esta en la lista de coloreados entonces se le asigna un valor entre 1 y 0 y se añade a la cola para posteriormente revisar los vecinos de ese
-            ##sino entonces ya esta coloreado y si ya esta coloreado entonces es ciclo impar y no es bipartito
+            componente.append(actual)
+            #para revisar tuplas tienes o que hacer el for de la posicion de la tupla y despues asignar a una variable cada elemento de la tupla 
+            #o haces esto que _ supuestamente ignora el otro elemento de la tupla y ya
+            ##si el vecino no esta en visitados entonces se le añade a visitados y a la cola para revisar los vecino de ese
             for vecino, _ in g.adyacencia[actual]:
-                if vecino not in color:
-                    color[vecino] = 1 - color[actual]
+                if vecino not in visitados:
+                    visitados[vecino] = True
                     cola.append(vecino)
-                elif color[vecino] == color[actual]:
-                    bipartita = False  # ciclo impar encontrado, pero seguimos para contar
-        #cuando ya termina la cola entonces ya eso es un conjunto disjunto porque no hay mas vecinos a esos nodos
-        componentes.append([tamaño, bipartita])
-    #revisar cual es el mas grande revisando el tamañ0
-    #como componente guarda una lista entonces itera componentes y de c
+        #si termina la iteracion es por que ya se encontaron los nodos de ese componente
+        #por como es la matriz de adyacencia de este codigo la si recorro la lista de vecinos de un nodo y los vecinos de esos eventualmente recorro todo el grafo
+        #o recorro un conjunto disjunto de elementos si no recorro todos los nodos
+        componentes.append(componente)
+
+    return componentes
+
+def Es_Bipartito(g, componentes):
+    #mas de lo mismo que en componentes pero ahora hacendo BFS parecido al que hizo el profe
+    #asumo que el primero es el mayor y reviso la longitud de la lista nada mas para ver cual es el mayor
     componente_grande = componentes[0]
-    for i in componentes:
-        if i[0] > componente_grande[0]:
-            componente_grande = i
-    
-    print(f"Número de componentes: {len(componentes)}")
-    print(f"Componente más grande: {componente_grande[0]} vértices")
-    print(f"¿Es bipartita?")
-    if componente_grande[1]:
-        print("Sí")
-    else: 
-        print("No")
-    
-    return componente_grande[1]
+    for componente in componentes:
+        if len(componente) > len(componente_grande):
+            componente_grande = componente
+    #cuando encuentra el mayor entonces hago un dict por que son goated por lo de identificacion
+    #coloreo (asigno 1 o 0) el primer nodo del componente mas grande y asumo que es bipartito
+    color = {}
+    color[componente_grande[0]] = 0
+    cola = [componente_grande[0]]
+    bipartita = True
+    #igual al de componentes metiendo en una cola el actual nodo del componente y reviso sus vecinos 
+    ##pero esta vez se revisa si no esta en color y se le asigna un numero distinto al del anterior nodo y se añade a la cola 
+    ##si ya ese vecino esta en color es porque hay un ciclo impar en ese componente y no es bipartito
+    while cola:
+        actual = cola.pop(0)
+        for vecino, _ in g.adyacencia[actual]:
+            if vecino not in color:
+                color[vecino] = 1 - color[actual]
+                cola.append(vecino)
+            elif color[vecino] == color[actual]:
+                bipartita = False
+
+    if bipartita:
+        print("La componente más grande ES bipartita.")
+    else:
+        print("La componente más grande NO es bipartita.")
+    return bipartita
