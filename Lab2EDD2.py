@@ -160,3 +160,140 @@ def Es_Bipartito(g, componentes):
     else:
         print("La componente más grande NO es bipartita.")
     return bipartita
+
+
+def Prim(g, componente):
+    visitados = {}
+    visitados[componente[0]] = True
+    peso_total = 0
+
+    while len(visitados) < len(componente):
+        minimo = -1
+        destino_min = None
+
+        for vertice in visitados:
+            for vecino, peso in g.adyacencia[vertice]:
+                if vecino not in visitados:
+                    if minimo == -1 or peso < minimo:
+                        minimo = peso
+                        destino_min = vecino
+
+        visitados[destino_min] = True
+        peso_total += minimo
+
+    return peso_total
+
+def Minimo_Componentes(g, componentes):
+    for i, componente in enumerate(componentes):
+        peso = Prim(g, componente)
+        print(f"Componente {i + 1}: {len(componente)} vértices, peso MST = {peso:.2f} km")
+
+def dijkstra(g, origen):
+    distancias = {}
+    visitados = {}
+    predecesores = {}
+
+    for vertice in g.adyacencia:
+        distancias[vertice] = float('inf')
+        predecesores[vertice] = None
+    distancias[origen] = 0
+
+    while True:
+        minimo = float('inf')
+        actual = None
+        for vertice in distancias:
+            if vertice not in visitados and distancias[vertice] < minimo:
+                minimo = distancias[vertice]
+                actual = vertice
+
+        if actual is None:
+            break
+
+        visitados[actual] = True
+
+        for vecino, peso in g.adyacencia[actual]:
+            if vecino not in visitados:
+                nueva_distancia = distancias[actual] + peso
+                if nueva_distancia < distancias[vecino]:
+                    distancias[vecino] = nueva_distancia
+                    predecesores[vecino] = actual
+
+    return distancias, predecesores
+
+
+def camino_minimo(g, origen, destino):
+    distancias, predecesores = dijkstra(g, origen)
+
+    # Verificar si el destino es alcanzable
+    if distancias[destino] == float('inf'):
+        print(f"No existe camino entre {origen} y {destino}.")
+        return None
+
+    # Reconstruir el camino backwards desde destino hasta origen
+    camino = []
+    actual = destino
+    while actual is not None:
+        camino.append(actual)
+        actual = predecesores[actual]
+
+    # Invertir el camino para que vaya de origen a destino
+    camino.reverse()
+
+    # Mostrar información de cada aeropuerto en el camino
+    print(f"\nCamino mínimo de {origen} a {destino} ({distancias[destino]:.2f} km):")
+    for i, codigo in enumerate(camino):
+        info = g.aeropuertos[codigo]
+        print(f"\n{i + 1}. Código: {codigo}")
+        print(f"   Nombre: {info['nombre']}")
+        print(f"   Ciudad: {info['ciudad']}")
+        print(f"   País: {info['pais']}")
+        print(f"   Latitud: {info['lat']}")
+        print(f"   Longitud: {info['lon']}")
+
+    return camino
+
+def top_10_lejanos(g, origen):
+    info = g.aeropuertos[origen]
+    print(f"Aeropuerto origen:")
+    print(f"  Código: {origen}")
+    print(f"  Nombre: {info['nombre']}")
+    print(f"  Ciudad: {info['ciudad']}")
+    print(f"  País: {info['pais']}")
+    print(f"  Latitud: {info['lat']}")
+    print(f"  Longitud: {info['lon']}")
+
+    distancias, _ = dijkstra(g, origen)
+
+    pares = []
+    for codigo, distancia in distancias.items():
+        if distancia != float('inf') and codigo != origen:
+            pares.append([codigo, distancia])
+
+    for i in range(min(10, len(pares))):
+        max_idx = i
+        for j in range(i + 1, len(pares)):
+            if pares[j][1] > pares[max_idx][1]:
+                max_idx = j
+        pares[i], pares[max_idx] = pares[max_idx], pares[i]
+
+    print(f"\nTop 10 aeropuertos más lejanos desde {origen}:")
+    for i in range(min(10, len(pares))):
+        codigo = pares[i][0]
+        distancia = pares[i][1]
+        info = g.aeropuertos[codigo]
+        print(f"\n{i + 1}. Código: {codigo}")
+        print(f"   Nombre: {info['nombre']}")
+        print(f"   Ciudad: {info['ciudad']}")
+        print(f"   País: {info['pais']}")
+        print(f"   Latitud: {info['lat']}")
+        print(f"   Longitud: {info['lon']}")
+        print(f"   Distancia: {distancia:.2f} km")
+
+def es_conexo(g, componentes):
+    if len(componentes) == 1:
+        print("El grafo ES conexo.")
+    else:
+        print(f"El grafo NO es conexo.")
+        print(f"Número de componentes: {len(componentes)}")
+        for i, componente in enumerate(componentes):
+            print(f"  Componente {i + 1}: {len(componente)} vértices")
