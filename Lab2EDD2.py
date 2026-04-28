@@ -418,6 +418,7 @@ def interfaz():
             canvas.delete("all")
             return
 
+        # reconstruir camino
         camino = []
         actual = destino
         while actual is not None:
@@ -425,9 +426,35 @@ def interfaz():
             actual = predecesores[actual]
         camino.reverse()
 
-        texto = f"Camino de {origen} a {destino}:\n"
-        texto += " → ".join(camino)
-        texto += f"\nDistancia: {distancias[destino]:.2f} km"
+        # -------- FORMATO BONITO --------
+        texto = ""
+        texto += "CAMINO MÍNIMO\n"
+        texto += "─" * 65 + "\n\n"
+
+        # Ruta tipo: BOG → PUJ → MAN → LHR
+        texto += "Ruta: " + " → ".join(camino) + "\n"
+        texto += f"Distancia total: {distancias[destino]:,.2f} km\n\n"
+
+        texto += "─" * 65 + "\n\n"
+
+        # Mostrar cada aeropuerto
+        for i, codigo in enumerate(camino):
+            info = g.aeropuertos[codigo]
+
+            if i == 0:
+                tipo = "[ORIGEN]"
+            elif i == len(camino) - 1:
+                tipo = "[DESTINO]"
+            else:
+                tipo = f"[ESCALA {i}]"
+
+            texto += f"  {tipo}  {codigo}\n"
+            texto += f"      Nombre:   {info['nombre']}\n"
+            texto += f"      Ciudad:   {info['ciudad']}\n"
+            texto += f"      País:     {info['pais']}\n"
+            texto += f"      Lat/Lon:  {info['lat']}, {info['lon']}\n\n"
+
+        texto += "─" * 65
 
         mostrar(texto)
         dibujar_camino(camino)
@@ -439,13 +466,18 @@ def interfaz():
             messagebox.showerror("Error", "Aeropuerto inválido")
             return
 
+        info = g.aeropuertos[origen]
+
+        # Ejecutar Dijkstra
         distancias, _ = dijkstra(g, origen)
 
+        # Construir lista de pares
         pares = []
         for codigo, distancia in distancias.items():
             if distancia != float('inf') and codigo != origen:
                 pares.append([codigo, distancia])
 
+        # Ordenar de mayor a menor (como tú ya lo haces manual)
         for i in range(min(10, len(pares))):
             max_idx = i
             for j in range(i + 1, len(pares)):
@@ -453,9 +485,33 @@ def interfaz():
                     max_idx = j
             pares[i], pares[max_idx] = pares[max_idx], pares[i]
 
-        texto = f"Top 10 desde {origen}:\n"
+        # -------- FORMATO BONITO --------
+        texto = ""
+
+        texto += "INFORMACIÓN DEL AEROPUERTO ORIGEN\n\n"
+        texto += "─" * 65 + "\n"
+        texto += f"  Nombre:   {info['nombre']}\n"
+        texto += f"  Ciudad:   {info['ciudad']}\n"
+        texto += f"  País:     {info['pais']}\n"
+        texto += f"  Lat/Lon:  {info['lat']}, {info['lon']}\n"
+        texto += "─" * 65 + "\n"
+
+
+        texto += "TOP 10 AEROPUERTOS MÁS LEJANOS\n\n"
+        texto += "─" * 65 + "\n\n"
+
+        # Mostrar top 10
         for i in range(min(10, len(pares))):
-            texto += f"{i+1}. {pares[i][0]} - {pares[i][1]:.2f} km\n"
+            codigo = pares[i][0]
+            distancia = pares[i][1]
+            info_dest = g.aeropuertos[codigo]
+
+            texto += f"  #{i+1}  {codigo}\n"
+            texto += f"      Nombre:   {info_dest['nombre']}\n"
+            texto += f"      Ciudad:   {info_dest['ciudad']}\n"
+            texto += f"      País:     {info_dest['pais']}\n"
+            texto += f"      Lat/Lon:  {info_dest['lat']}, {info_dest['lon']}\n"
+            texto += f"      Distancia (camino mínimo): {distancia:,.2f} km\n\n"
 
         mostrar(texto)
         canvas.delete("all")
