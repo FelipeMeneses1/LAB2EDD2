@@ -297,3 +297,209 @@ def es_conexo(g, componentes):
         print(f"Número de componentes: {len(componentes)}")
         for i, componente in enumerate(componentes):
             print(f"  Componente {i + 1}: {len(componente)} vértices")
+
+import tkinter as tk
+from tkinter import messagebox
+
+def interfaz():
+    g = construir_grafo(data)
+    componentes = encontrar_componentes(g)
+
+    ventana = tk.Tk()
+    ventana.title("Grafo de Aeropuertos")
+    ventana.geometry("800x550")
+    ventana.config(bg="#eef2f7")
+
+    # ----------- FRAMES -----------
+    frame_izq = tk.Frame(ventana, bg="#2c3e50", width=250)
+    frame_izq.pack(side="left", fill="y")
+
+    frame_der = tk.Frame(ventana, bg="#ecf0f1")
+    frame_der.pack(side="right", expand=True, fill="both")
+
+    # ----------- AREA RESULTADOS -----------
+    resultado = tk.Text(frame_der, bg="#ffffff", fg="#2c3e50",
+                        font=("Consolas", 10), bd=0)
+    resultado.pack(padx=10, pady=10, fill="both", expand=True)
+
+    # ----------- CANVAS (AHORA OSCURO) -----------
+    canvas = tk.Canvas(frame_der, bg="#2c3e50", height=200, highlightthickness=0)
+    canvas.pack(fill="x", padx=10, pady=5)
+
+    def mostrar(texto):
+        resultado.delete("1.0", tk.END)
+        resultado.insert(tk.END, texto)
+
+    # ----------- DIBUJAR CAMINO -----------
+
+    def dibujar_camino(camino):
+        canvas.delete("all")
+
+        if len(camino) == 0:
+            return
+
+        x = 50
+        y = 100
+
+        for i in range(len(camino)):
+            if i == 0:
+                color = "#2ecc71"   # verde claro
+            elif i == len(camino) - 1:
+                color = "#e74c3c"   # rojo claro
+            else:
+                color = "#3498db"   # azul
+
+            canvas.create_oval(x-15, y-15, x+15, y+15, fill=color, outline="")
+
+            canvas.create_text(x, y, text=camino[i], fill="white")
+
+            if i < len(camino) - 1:
+                canvas.create_line(x+15, y, x+85, y,
+                                   arrow=tk.LAST,
+                                   fill="white", width=2)
+
+            x += 100
+
+    # ----------- FUNCIONES -----------
+
+    def accion_conexo():
+        if len(componentes) == 1:
+            mostrar("El grafo ES conexo")
+        else:
+            texto = f"El grafo NO es conexo\nComponentes: {len(componentes)}\n"
+            for i, comp in enumerate(componentes):
+                texto += f"Componente {i+1}: {len(comp)} vértices\n"
+            mostrar(texto)
+
+    def accion_bipartito():
+        componente_grande = componentes[0]
+        for comp in componentes:
+            if len(comp) > len(componente_grande):
+                componente_grande = comp
+
+        color = {}
+        color[componente_grande[0]] = 0
+        cola = [componente_grande[0]]
+        bipartita = True
+
+        while cola:
+            actual = cola.pop(0)
+            for vecino, _ in g.adyacencia[actual]:
+                if vecino not in color:
+                    color[vecino] = 1 - color[actual]
+                    cola.append(vecino)
+                elif color[vecino] == color[actual]:
+                    bipartita = False
+
+        if bipartita:
+            mostrar("La componente más grande ES bipartita")
+        else:
+            mostrar("La componente más grande NO es bipartita")
+
+    def accion_mst():
+        texto = ""
+        for i, comp in enumerate(componentes):
+            peso = Prim(g, comp)
+            texto += f"Componente {i+1}: {len(comp)} vértices, MST = {peso:.2f} km\n"
+        mostrar(texto)
+
+    def accion_camino():
+        origen = entry_origen.get().upper()
+        destino = entry_destino.get().upper()
+
+        if origen not in g.aeropuertos or destino not in g.aeropuertos:
+            messagebox.showerror("Error", "Aeropuerto inválido")
+            return
+
+        distancias, predecesores = dijkstra(g, origen)
+
+        if distancias[destino] == float('inf'):
+            mostrar("No existe camino")
+            canvas.delete("all")
+            return
+
+        camino = []
+        actual = destino
+        while actual is not None:
+            camino.append(actual)
+            actual = predecesores[actual]
+        camino.reverse()
+
+        texto = f"Camino de {origen} a {destino}:\n"
+        texto += " → ".join(camino)
+        texto += f"\nDistancia: {distancias[destino]:.2f} km"
+
+        mostrar(texto)
+        dibujar_camino(camino)
+
+    def accion_top10():
+        origen = entry_origen.get().upper()
+
+        if origen not in g.aeropuertos:
+            messagebox.showerror("Error", "Aeropuerto inválido")
+            return
+
+        distancias, _ = dijkstra(g, origen)
+
+        pares = []
+        for codigo, distancia in distancias.items():
+            if distancia != float('inf') and codigo != origen:
+                pares.append([codigo, distancia])
+
+        for i in range(min(10, len(pares))):
+            max_idx = i
+            for j in range(i + 1, len(pares)):
+                if pares[j][1] > pares[max_idx][1]:
+                    max_idx = j
+            pares[i], pares[max_idx] = pares[max_idx], pares[i]
+
+        texto = f"Top 10 desde {origen}:\n"
+        for i in range(min(10, len(pares))):
+            texto += f"{i+1}. {pares[i][0]} - {pares[i][1]:.2f} km\n"
+
+        mostrar(texto)
+        canvas.delete("all")
+
+    # ----------- ESTILO BOTONES (AHORA VISIBLE) -----------
+
+    estilo_btn = {
+        "bg": "#ecf0f1",
+        "fg": "#2c3e50",
+        "activebackground": "#bdc3c7",
+        "bd": 0,
+        "font": ("Arial", 10)
+    }
+
+    # ----------- PANEL IZQUIERDO -----------
+
+    tk.Label(frame_izq, text="Opciones", bg="#2c3e50",
+             fg="white", font=("Arial", 14, "bold")).pack(pady=10)
+
+    tk.Button(frame_izq, text="¿Es conexo?", command=accion_conexo,
+              **estilo_btn).pack(pady=5, fill="x", padx=10)
+
+    tk.Button(frame_izq, text="¿Es bipartito?", command=accion_bipartito,
+              **estilo_btn).pack(pady=5, fill="x", padx=10)
+
+    tk.Button(frame_izq, text="MST", command=accion_mst,
+              **estilo_btn).pack(pady=5, fill="x", padx=10)
+
+    tk.Label(frame_izq, text="Origen:", bg="#2c3e50", fg="white").pack(pady=5)
+    entry_origen = tk.Entry(frame_izq)
+    entry_origen.pack(padx=10)
+
+    tk.Label(frame_izq, text="Destino:", bg="#2c3e50", fg="white").pack(pady=5)
+    entry_destino = tk.Entry(frame_izq)
+    entry_destino.pack(padx=10)
+
+    tk.Button(frame_izq, text="Camino mínimo", command=accion_camino,
+              **estilo_btn).pack(pady=5, fill="x", padx=10)
+
+    tk.Button(frame_izq, text="Top 10 lejanos", command=accion_top10,
+              **estilo_btn).pack(pady=5, fill="x", padx=10)
+
+    ventana.mainloop()
+
+
+if __name__ == "__main__":
+    interfaz()
