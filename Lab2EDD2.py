@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import math
+import folium
+import webbrowser
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 data = pd.read_csv(os.path.join(BASE_DIR, "flights_final.csv"))
 
@@ -98,6 +100,63 @@ def construir_grafo(data):
         g.agregar_arista(codigo_origen, codigo_destino, distancia)
 
     return g
+
+def crear_mapa_aeropuertos(g):
+    mapa = folium.Map(location=[20, 0], zoom_start=2)
+
+    for codigo in g.aeropuertos:
+        info = g.aeropuertos[codigo]
+        folium.CircleMarker(
+            location=[info["lat"], info["lon"]],
+            radius=3,
+            popup=f"{codigo} - {info['nombre']}",
+            color="blue",
+            fill=True
+        ).add_to(mapa)
+
+    # Ruta absoluta usando BASE_DIR
+    ruta = os.path.join(BASE_DIR, "mapa_aeropuertos.html")
+    mapa.save(ruta)
+    webbrowser.open("file:///" + ruta)
+
+
+def crear_mapa_camino(g, camino):
+    if len(camino) == 0:
+        return
+
+    primero = g.aeropuertos[camino[0]]
+    mapa = folium.Map(location=[primero["lat"], primero["lon"]], zoom_start=4)
+
+    coordenadas = []
+
+    for i, codigo in enumerate(camino):
+        info = g.aeropuertos[codigo]
+        coordenadas.append([info["lat"], info["lon"]])
+
+        if i == 0:
+            color = "green"
+        elif i == len(camino) - 1:
+            color = "red"
+        else:
+            color = "blue"
+
+        folium.Marker(
+            location=[info["lat"], info["lon"]],
+            popup=f"""
+            Código: {codigo}<br>
+            Nombre: {info['nombre']}<br>
+            Ciudad: {info['ciudad']}<br>
+            País: {info['pais']}
+            """,
+            icon=folium.Icon(color=color)
+        ).add_to(mapa)
+
+    folium.PolyLine(coordenadas, color="red", weight=4).add_to(mapa)
+
+    # Ruta absoluta
+    ruta = os.path.join(BASE_DIR, "mapa_camino.html")
+    mapa.save(ruta)
+    webbrowser.open("file:///" + ruta)
 
 #toco separarlo por que esto se usa en el punto 3
 def encontrar_componentes(g):
@@ -458,6 +517,8 @@ def interfaz():
 
         mostrar(texto)
         dibujar_camino(camino)
+        crear_mapa_camino(g, camino)
+
 
     def accion_top10():
         origen = entry_origen.get().upper()
@@ -539,6 +600,10 @@ def interfaz():
 
     tk.Button(frame_izq, text="MST", command=accion_mst,
               **estilo_btn).pack(pady=5, fill="x", padx=10)
+    
+    tk.Button(frame_izq, text="Mapa Aeropuertos",
+          command=lambda: crear_mapa_aeropuertos(g),
+          **estilo_btn).pack(pady=5, fill="x", padx=10)
 
     tk.Label(frame_izq, text="Origen:", bg="#2c3e50", fg="white").pack(pady=5)
     entry_origen = tk.Entry(frame_izq)
